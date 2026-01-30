@@ -289,3 +289,30 @@ Notes:
 - The AAR is built by `./gradlew :rnlib:assembleRelease` (see `jitpack.yml`).
 - Make sure the tag is pushed to GitHub.
 
+## iOS artifact (CocoaPods + bundle)
+
+This repo includes a simple podspec that packages the JS bundle and the native EnvModule bridge.
+
+Build the iOS bundle before tagging a release:
+
+```sh
+./scripts/bundle-ios.sh
+```
+
+Then tag and push:
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Consume via CocoaPods:
+
+```ruby
+pod 'SGReactNativeKit', :git => 'https://github.com/iniyanmurugavel/React-Native-Library.git', :tag => 'v1.0.0'
+```
+
+Notes:
+- The pod includes `ios/SGReactNativeKit/Resources/main.jsbundle`.
+- The host iOS app still needs React Native set up to load the JS bundle.
+
