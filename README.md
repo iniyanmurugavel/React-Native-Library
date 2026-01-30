@@ -1,5 +1,7 @@
 # SG React Native Kit
 
+[![CI](https://github.com/iniyanmurugavel/React-Native-Library/actions/workflows/ci.yml/badge.svg)](https://github.com/iniyanmurugavel/React-Native-Library/actions/workflows/ci.yml)
+
 A React Native CLI project (no Expo) that demonstrates a feature-based structure, a small design system, and native build variants for staging vs production. The Home screen shows a badge so you always know which build variant is running.
 
 ## What's inside
