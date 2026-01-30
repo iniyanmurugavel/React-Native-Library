@@ -1,0 +1,24 @@
+{
+  "name": "sg-react-native-kit-demo",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "bootstrap": "npm install",
+    "demo:android": "npm --prefix apps/demo run android",
+    "demo:ios": "npm --prefix apps/demo run ios",
+    "demo:start": "npm --prefix apps/demo start",
+    "lint": "npm --prefix apps/demo run lint",
+    "test": "npm --prefix apps/demo run test"
+  },
+  "dependencies": {
+    "sg-react-native-kit": "workspace:*"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

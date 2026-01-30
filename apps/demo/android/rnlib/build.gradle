@@ -1,0 +1,80 @@
+apply plugin: "com.android.library"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "maven-publish"
+
+def rnRoot = rootProject.projectDir.parentFile.parentFile.parentFile
+def bundleDir = file("$projectDir/src/main/assets")
+def resDir = file("$projectDir/src/main/res")
+def publishDir = project.findProperty("rnPublishDir") ?: "${rootProject.projectDir.parentFile.parentFile.parentFile}/maven-repo"
+
+tasks.register("bundleReleaseJsAndAssets", Exec) {
+    workingDir rnRoot
+    commandLine(
+        "node",
+        "${rnRoot}/node_modules/react-native/cli.js",
+        "bundle",
+        "--platform",
+        "android",
+        "--dev",
+        "false",
+        "--entry-file",
+        "apps/demo/index.js",
+        "--bundle-output",
+        "${bundleDir}/index.android.bundle",
+        "--assets-dest",
+        "${resDir}"
+    )
+    doFirst {
+        bundleDir.mkdirs()
+        resDir.mkdirs()
+    }
+}
+
+preBuild.dependsOn("bundleReleaseJsAndAssets")
+
+android {
+    namespace "com.circles.rn.demo"
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
+
+dependencies {
+    api("com.facebook.react:react-android")
+    api("com.facebook.react:hermes-android")
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                groupId = "com.circles.reactnative"
+                artifactId = "sg-react-native-kit"
+                version = "1.0.0"
+            }
+        }
+        repositories {
+            maven {
+                name = "localRepo"
+                url = uri(publishDir)
+            }
+        }
+    }
+}

@@ -1,5 +1,5 @@
 jdk:
   - openjdk17
 install:
-  - cd android
+  - cd apps/demo/android
   - ./gradlew :rnlib:assembleRelease

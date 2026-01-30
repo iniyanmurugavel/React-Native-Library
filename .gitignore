@@ -55,7 +55,7 @@ yarn-error.log
 
 # Bundle artifact
 *.jsbundle
-!ios/SGReactNativeKit/Resources/main.jsbundle
+!apps/demo/ios/SGReactNativeKit/Resources/main.jsbundle
 
 # Ruby / CocoaPods
 **/Pods/
@@ -82,7 +82,7 @@ yarn-error.log
 # Env files
 .env.*
 # iOS/Android build outputs
-ios/build/
-android/app/build/
+apps/demo/ios/build/
+apps/demo/android/app/build/
 # React Native
 .expo/

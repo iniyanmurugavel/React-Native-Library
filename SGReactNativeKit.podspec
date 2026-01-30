@@ -11,8 +11,8 @@ Pod::Spec.new do |s|
   s.platform         = :ios, '15.1'
   s.requires_arc     = true
 
-  s.source_files     = 'ios/SGReactNativeKit/EnvModule.m'
-  s.resources        = 'ios/SGReactNativeKit/Resources/**/*'
+  s.source_files     = 'apps/demo/ios/SGReactNativeKit/EnvModule.m'
+  s.resources        = 'apps/demo/ios/SGReactNativeKit/Resources/**/*'
 
   s.dependency 'React-Core'
 end
