@@ -55,12 +55,10 @@ yarn-error.log
 
 # Bundle artifact
 *.jsbundle
-!apps/demo/ios/SGReactNativeKit/Resources/main.jsbundle
 
 # Ruby / CocoaPods
 **/Pods/
-**/vendor/bundle/
-**/.bundle/
+/vendor/bundle/
 
 # Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*
