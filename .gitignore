@@ -55,6 +55,7 @@ yarn-error.log
 
 # Bundle artifact
 *.jsbundle
+!ios/SGReactNativeKit/Resources/main.jsbundle
 
 # Ruby / CocoaPods
 **/Pods/
@@ -73,3 +74,15 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+# Editor / OS
+.vscode/
+*.swp
+# Logs
+*.log
+# Env files
+.env.*
+# iOS/Android build outputs
+ios/build/
+android/app/build/
+# React Native
+.expo/
