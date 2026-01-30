@@ -22,8 +22,15 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Gradle cache
-        uses: gradle/actions/setup-gradle@v3
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/gradle.properties', 'android/build.gradle', 'android/settings.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
       - name: Build Android Debug
         run: cd android && ./gradlew assembleStagingDebug
 
@@ -38,7 +45,11 @@ jobs:
       - name: Install JS deps
         run: npm ci
       - name: Install CocoaPods
-        run: cd ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle install && bundle exec pod install
+        run: |
+          gem install bundler -v 4.0.4
+          cd ios
+          LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle _4.0.4_ install
+          bundle _4.0.4_ exec pod install
       - name: Build iOS
         run: xcodebuild -workspace ios/SGReactNativeKit.xcworkspace -scheme SGReactNativeKit -configuration Debug -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15'
 
@@ -58,8 +69,15 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Gradle cache
-        uses: gradle/actions/setup-gradle@v3
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/gradle.properties', 'android/build.gradle', 'android/settings.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
       - name: Build RN library AAR
         run: cd android && ./gradlew :rnlib:assembleRelease
       - name: Upload AAR artifact
@@ -80,7 +98,11 @@ jobs:
       - name: Install JS deps
         run: npm ci
       - name: Install CocoaPods
-        run: cd ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle install && bundle exec pod install
+        run: |
+          gem install bundler -v 4.0.4
+          cd ios
+          LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle _4.0.4_ install
+          bundle _4.0.4_ exec pod install
       - name: Build iOS JS bundle
         run: ./scripts/bundle-ios.sh
       - name: Package iOS artifact
@@ -91,4 +113,3 @@ jobs:
         with:
           name: ios-artifact
           path: ios-artifact.zip
-
