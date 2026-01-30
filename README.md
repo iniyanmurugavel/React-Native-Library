@@ -13,7 +13,7 @@ A React Native CLI project (no Expo) that demonstrates a feature-based structure
 - Minimal design system (tokens + UI primitives)
 - Android flavors: `staging` and `production`
 - iOS build config env (`ENV_NAME`) and shared badge
-- AAR publishing setup for the RN library module (`android/rnlib`)
+- AAR publishing setup for the RN library module (`apps/demo/android/rnlib`)
 
 ## Requirements (first-time setup)
 
@@ -29,14 +29,16 @@ You only do these once per machine.
 
 ## Install dependencies
 
+From repo root:
+
 ```sh
 npm install
 
-# iOS only
-bundle install
-cd ios
+# iOS only (from repo root)
+cd apps/demo/ios
+LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle install
 LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle exec pod install
-cd ..
+cd ../..
 ```
 
 ## Run the app (dev)
@@ -44,31 +46,31 @@ cd ..
 Start Metro:
 
 ```sh
-npm start
+npm run demo:start
 ```
 
 Android (staging debug):
 
 ```sh
-npx react-native run-android --mode stagingDebug
+npm run demo:android -- --mode stagingDebug
 ```
 
 Android (production debug):
 
 ```sh
-npx react-native run-android --mode productionDebug
+npm run demo:android -- --mode productionDebug
 ```
 
 iOS (debug uses STAGING):
 
 ```sh
-npx react-native run-ios --scheme SGReactNativeKit
+npm run demo:ios -- --scheme SGReactNativeKit
 ```
 
 iOS (release uses PRODUCTION):
 
 ```sh
-npx react-native run-ios --scheme SGReactNativeKit --configuration Release
+npm run demo:ios -- --scheme SGReactNativeKit --configuration Release
 ```
 
 ## Build variants and environment badge
@@ -81,37 +83,22 @@ The Home screen shows a badge that reads `STAGING` or `PRODUCTION`.
 
 ### Where it is configured
 
-- Android flavors: `android/app/build.gradle`
-- Android native module: `android/app/src/main/java/com/sg/reactnativekit/EnvModule.kt`
-- iOS Info.plist key: `ios/SGReactNativeKit/Info.plist`
-- iOS native module: `ios/SGReactNativeKit/EnvModule.m`
-- JS helper: `src/shared/native/env.ts`
+- Android flavors: `apps/demo/android/app/build.gradle`
+- Android native module: `apps/demo/android/app/src/main/java/com/sg/reactnativekit/EnvModule.kt`
+- iOS Info.plist key: `apps/demo/ios/SGReactNativeKit/Info.plist`
+- iOS native module: `apps/demo/ios/SGReactNativeKit/EnvModule.m`
+- JS helper: `packages/sg-react-native-kit/src/shared/native/env.ts`
 
 ## Project structure
 
 ```text
-src/
-  app/
-    App.tsx
-    navigation/
-      RootNavigator.tsx
-      navTheme.ts
-      types.ts
-  features/
-    home/HomeScreen.tsx
-    feature/FeatureScreen.tsx
-    feature/ScreenA.tsx
-    feature/ScreenB.tsx
-  shared/
-    design-system/
-      tokens.ts
-      components/
-        Badge.tsx
-        Button.tsx
-        Card.tsx
-        Screen.tsx
-    native/env.ts
-    utils/notifications.ts
+apps/demo/
+  src/
+  android/
+  ios/
+
+packages/sg-react-native-kit/
+  src/
 ```
 
 ## Design system
@@ -123,29 +110,29 @@ The design system is intentionally small and easy to extend:
 
 ## App icons
 
-- iOS: `ios/SGReactNativeKit/Images.xcassets/AppIcon.appiconset`
-- Android: `android/app/src/main/res/mipmap-*`
+- iOS: `apps/demo/ios/SGReactNativeKit/Images.xcassets/AppIcon.appiconset`
+- Android: `apps/demo/android/app/src/main/res/mipmap-*`
 
 ## Publishing the Android library (AAR / Maven)
 
-This repo includes a library module at `android/rnlib`.
+This repo includes a library module at `apps/demo/android/rnlib`.
 
 Local Maven publish (default path: `maven-repo` in the repo root):
 
 ```sh
-cd android
+cd apps/demo/android
 ./gradlew :rnlib:publishReleasePublicationToLocalRepoRepository
 ```
 
 Artifacts:
 - Group: `com.circles.reactnative`
 - Artifact: `sg-react-native-kit`
-- Version: `1.0.0` (change in `android/rnlib/build.gradle`)
+- Version: `1.0.0` (change in `apps/demo/android/rnlib/build.gradle`)
 
 If you need to publish the bundled RN native dependencies too (optional):
 
 ```sh
-cd android
+cd apps/demo/android
 ./gradlew \
   :react-native-gesture-handler:publishReleasePublicationToLocalRepoRepository \
   :react-native-screens:publishReleasePublicationToLocalRepoRepository \
@@ -161,12 +148,12 @@ cd android
   ```
 - **Gradle lock issues**: Try again or stop any stuck Gradle daemons.
 - **Android build flavors not found**: use `--mode stagingDebug` or `--mode productionDebug`.
-- **Metro not connected**: ensure `npm start` is running on port 8081.
+- **Metro not connected**: ensure `npm run demo:start` is running on port 8081.
 
 ## Scripts
 
 ```sh
-npm start
+npm run demo:start
 npm run android
 npm run ios
 npm test
@@ -181,7 +168,7 @@ npm run lint
 
 ---
 
-If you’re new to RN, start with `src/app/App.tsx` and `src/features/home/HomeScreen.tsx`.
+If you’re new to RN, start with `packages/sg-react-native-kit/src/app/App.tsx` and `packages/sg-react-native-kit/src/features/home/HomeScreen.tsx`.
 
 ## CI (GitHub Actions)
 
@@ -192,7 +179,17 @@ name: CI
 on:
   push:
     branches: [ master, main ]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   android:
@@ -204,12 +201,18 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install JS deps
-        run: npm ci
+        run: npm install
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: gradle
       - name: Build Android Debug
-        run: cd android && ./gradlew assembleStagingDebug
+        run: cd apps/demo/android && ./gradlew assembleStagingDebug
 
   ios:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -217,19 +220,41 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install JS deps
-        run: npm ci
+        run: npm install
+      - name: Cache Ruby gems
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/demo/vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('apps/demo/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
       - name: Install CocoaPods
-        run: cd ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle install && bundle exec pod install
+        run: |
+          gem install bundler -v 4.0.4
+          cd apps/demo/ios
+          LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle _4.0.4_ install
+          bundle _4.0.4_ exec pod install
+      - name: Select iOS simulator
+        id: sim
+        run: |
+          SIM_NAME=$(xcrun simctl list devices available | awk -F ' \(' '/iPhone/ {print $1; exit}')
+          if [ -z "$SIM_NAME" ]; then
+            echo "No available iPhone simulator found."
+            xcrun simctl list devices
+            exit 1
+          fi
+          echo "name=$SIM_NAME" >> "$GITHUB_OUTPUT"
       - name: Build iOS
-        run: xcodebuild -workspace ios/SGReactNativeKit.xcworkspace -scheme SGReactNativeKit -configuration Debug -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15'
+        run: xcodebuild -workspace apps/demo/ios/SGReactNativeKit.xcworkspace -scheme SGReactNativeKit -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}"
 ```
 
 ## Release checklist
 
 Android:
-- Bump versionName/versionCode in `android/app/build.gradle`
+- Bump versionName/versionCode in `apps/demo/android/app/build.gradle`
 - Use a release keystore and update signing config
-- Build AAB: `cd android && ./gradlew bundleProductionRelease`
+- Build AAB: `cd apps/demo/android && ./gradlew bundleProductionRelease`
 - Test on a real device before store upload
 
 iOS:
@@ -262,13 +287,13 @@ Add screenshots to `docs/screenshots/` and list them here:
 
 - **Android build fails with SDK errors**: Open Android Studio once to accept licenses.
 - **Pods install fails**: Ensure Ruby + bundler match `Gemfile` and run `bundle exec pod install`.
-- **Metro not found**: Run `npm start` in a separate terminal.
+- **Metro not found**: Run `npm run demo:start` in a separate terminal.
 - **App launches to blank screen**: Clear Metro cache: `npx react-native start --reset-cache`.
 - **Cannot see Dev Menu**: Only available on debug builds.
 
 ## JitPack (production AAR)
 
-This repo is ready for JitPack. Tag a release like `v1.0.0` and JitPack will build the AAR from `android/rnlib`.
+This repo is ready for JitPack. Tag a release like `v1.0.0` and JitPack will build the AAR from `apps/demo/android/rnlib`.
 
 Add JitPack to your consuming app:
 
@@ -288,7 +313,7 @@ dependencies {
 
 Notes:
 - JitPack uses the Git tag as the version.
-- The AAR is built by `./gradlew :rnlib:assembleRelease` (see `jitpack.yml`).
+- The AAR is built by `./gradlew :rnlib:assembleRelease` from `apps/demo/android` (see `jitpack.yml`).
 - Make sure the tag is pushed to GitHub.
 
 ## iOS artifact (CocoaPods + bundle)
@@ -298,7 +323,7 @@ This repo includes a simple podspec that packages the JS bundle and the native E
 Build the iOS bundle before tagging a release:
 
 ```sh
-./scripts/bundle-ios.sh
+./packages/sg-react-native-kit/scripts/bundle-ios.sh
 ```
 
 Then tag and push:
@@ -315,6 +340,6 @@ pod 'SGReactNativeKit', :git => 'https://github.com/iniyanmurugavel/React-Native
 ```
 
 Notes:
-- The pod includes `ios/SGReactNativeKit/Resources/main.jsbundle`.
+- The pod includes `apps/demo/ios/SGReactNativeKit/Resources/main.jsbundle`.
 - The host iOS app still needs React Native set up to load the JS bundle.
 

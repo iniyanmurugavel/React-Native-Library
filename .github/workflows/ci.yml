@@ -4,14 +4,25 @@ on:
     branches: [ master, main ]
     tags:
       - 'v*.*.*'
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   android:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,26 +30,28 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install JS deps
-        run: npm ci
+        run: npm install
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: gradle
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/gradle.properties', 'android/build.gradle', 'android/settings.gradle') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('apps/demo/android/gradle/wrapper/gradle-wrapper.properties', 'apps/demo/android/gradle.properties', 'apps/demo/android/build.gradle', 'apps/demo/android/settings.gradle') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
       - name: Build Android Debug
-        run: cd android && ./gradlew assembleStagingDebug
+        run: cd apps/demo/android && ./gradlew assembleStagingDebug
 
   ios:
     runs-on: macos-15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,19 +59,38 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install JS deps
-        run: npm ci
+        run: npm install
+      - name: Cache Ruby gems
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/demo/vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('apps/demo/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
       - name: Install CocoaPods
         run: |
           gem install bundler -v 4.0.4
-          cd ios
+          cd apps/demo/ios
           LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle _4.0.4_ install
           bundle _4.0.4_ exec pod install
+      - name: Select iOS simulator
+        id: sim
+        run: |
+          SIM_NAME=$(xcrun simctl list devices available | awk -F ' \(' '/iPhone/ {print $1; exit}')
+          if [ -z "$SIM_NAME" ]; then
+            echo "No available iPhone simulator found."
+            xcrun simctl list devices
+            exit 1
+          fi
+          echo "name=$SIM_NAME" >> "$GITHUB_OUTPUT"
       - name: Build iOS
-        run: xcodebuild -workspace ios/SGReactNativeKit.xcworkspace -scheme SGReactNativeKit -configuration Debug -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15'
+        run: xcodebuild -workspace apps/demo/ios/SGReactNativeKit.xcworkspace -scheme SGReactNativeKit -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}"
 
   aar:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,32 +98,34 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install JS deps
-        run: npm ci
+        run: npm install
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: gradle
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/gradle.properties', 'android/build.gradle', 'android/settings.gradle') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('apps/demo/android/gradle/wrapper/gradle-wrapper.properties', 'apps/demo/android/gradle.properties', 'apps/demo/android/build.gradle', 'apps/demo/android/settings.gradle') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
       - name: Build RN library AAR
-        run: cd android && ./gradlew :rnlib:assembleRelease
+        run: cd apps/demo/android && ./gradlew :rnlib:assembleRelease
       - name: Upload AAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: rnlib-release-aar
-          path: android/rnlib/build/outputs/aar/*.aar
+          path: apps/demo/android/rnlib/build/outputs/aar/*.aar
 
   ios-artifact:
     runs-on: macos-15
     if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -99,18 +133,26 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install JS deps
-        run: npm ci
+        run: npm install
+      - name: Cache Ruby gems
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/demo/vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('apps/demo/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
       - name: Install CocoaPods
         run: |
           gem install bundler -v 4.0.4
-          cd ios
+          cd apps/demo/ios
           LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle _4.0.4_ install
           bundle _4.0.4_ exec pod install
       - name: Build iOS JS bundle
-        run: ./scripts/bundle-ios.sh
+        run: ./packages/sg-react-native-kit/scripts/bundle-ios.sh
       - name: Package iOS artifact
         run: |
-          zip -r ios-artifact.zip             ios/SGReactNativeKit/Resources             SGReactNativeKit.podspec
+          zip -r ios-artifact.zip             apps/demo/ios/SGReactNativeKit/Resources             SGReactNativeKit.podspec
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
@@ -120,6 +162,8 @@ jobs:
   auto-tag:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -129,7 +173,7 @@ jobs:
           node-version: 20
       - name: Read version
         id: version
-        run: echo "version=$(node -p 'require(\"./package.json\").version')" >> $GITHUB_OUTPUT
+        run: echo "version=$(node -p 'require(\"./packages/sg-react-native-kit/package.json\").version')" >> $GITHUB_OUTPUT
       - name: Create tag if missing
         run: |
           TAG=v${{ steps.version.outputs.version }}
