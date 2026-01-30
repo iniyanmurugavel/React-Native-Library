@@ -1,0 +1,70 @@
+name: CI
+on:
+  push:
+    branches: [ master, main ]
+    tags:
+      - 'v*.*.*'
+  pull_request:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install JS deps
+        run: npm ci
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v3
+      - name: Build Android Debug
+        run: cd android && ./gradlew assembleStagingDebug
+
+  ios:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install JS deps
+        run: npm ci
+      - name: Install CocoaPods
+        run: cd ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle install && bundle exec pod install
+      - name: Build iOS
+        run: xcodebuild -workspace ios/SGReactNativeKit.xcworkspace -scheme SGReactNativeKit -configuration Debug -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15'
+
+  aar:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install JS deps
+        run: npm ci
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v3
+      - name: Build RN library AAR
+        run: cd android && ./gradlew :rnlib:assembleRelease
+      - name: Upload AAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rnlib-release-aar
+          path: android/rnlib/build/outputs/aar/*.aar
+

@@ -1,97 +1,291 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# SG React Native Kit
 
-# Getting Started
+A React Native CLI project (no Expo) that demonstrates a feature-based structure, a small design system, and native build variants for staging vs production. The Home screen shows a badge so you always know which build variant is running.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## What's inside
 
-## Step 1: Start Metro
+- React Native 0.82.x (CLI)
+- TypeScript
+- React Navigation (native stack)
+- Feature-based folder structure
+- Minimal design system (tokens + UI primitives)
+- Android flavors: `staging` and `production`
+- iOS build config env (`ENV_NAME`) and shared badge
+- AAR publishing setup for the RN library module (`android/rnlib`)
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Requirements (first-time setup)
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+You only do these once per machine.
 
-```sh
-# Using npm
-npm start
+- Node.js >= 20
+- Java JDK 17 (or the version recommended by React Native docs)
+- Android Studio + SDK + emulator
+- Xcode (for iOS) + Command Line Tools
+- Ruby >= 2.6.10 (for CocoaPods)
+- CocoaPods
+- Watchman (macOS recommended)
 
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
-
-### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+## Install dependencies
 
 ```sh
+npm install
+
+# iOS only
 bundle install
+cd ios
+LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle exec pod install
+cd ..
 ```
 
-Then, and every time you update your native dependencies, run:
+## Run the app (dev)
+
+Start Metro:
 
 ```sh
-bundle exec pod install
+npm start
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+Android (staging debug):
 
 ```sh
-# Using npm
+npx react-native run-android --mode stagingDebug
+```
+
+Android (production debug):
+
+```sh
+npx react-native run-android --mode productionDebug
+```
+
+iOS (debug uses STAGING):
+
+```sh
+npx react-native run-ios --scheme SGReactNativeKit
+```
+
+iOS (release uses PRODUCTION):
+
+```sh
+npx react-native run-ios --scheme SGReactNativeKit --configuration Release
+```
+
+## Build variants and environment badge
+
+The Home screen shows a badge that reads `STAGING` or `PRODUCTION`.
+
+- Android value comes from `BuildConfig.ENV_NAME` (product flavors).
+- iOS value comes from `Info.plist` via `ENV_NAME` build setting.
+- If no native value is set, we fall back to `__DEV__`.
+
+### Where it is configured
+
+- Android flavors: `android/app/build.gradle`
+- Android native module: `android/app/src/main/java/com/sg/reactnativekit/EnvModule.kt`
+- iOS Info.plist key: `ios/SGReactNativeKit/Info.plist`
+- iOS native module: `ios/SGReactNativeKit/EnvModule.m`
+- JS helper: `src/shared/native/env.ts`
+
+## Project structure
+
+```text
+src/
+  app/
+    App.tsx
+    navigation/
+      RootNavigator.tsx
+      navTheme.ts
+      types.ts
+  features/
+    home/HomeScreen.tsx
+    feature/FeatureScreen.tsx
+    feature/ScreenA.tsx
+    feature/ScreenB.tsx
+  shared/
+    design-system/
+      tokens.ts
+      components/
+        Badge.tsx
+        Button.tsx
+        Card.tsx
+        Screen.tsx
+    native/env.ts
+    utils/notifications.ts
+```
+
+## Design system
+
+The design system is intentionally small and easy to extend:
+
+- `tokens.ts`: palette, spacing, radii, shadows
+- Components: `Badge`, `Button`, `Card`, `Screen`
+
+## App icons
+
+- iOS: `ios/SGReactNativeKit/Images.xcassets/AppIcon.appiconset`
+- Android: `android/app/src/main/res/mipmap-*`
+
+## Publishing the Android library (AAR / Maven)
+
+This repo includes a library module at `android/rnlib`.
+
+Local Maven publish (default path: `maven-repo` in the repo root):
+
+```sh
+cd android
+./gradlew :rnlib:publishReleasePublicationToLocalRepoRepository
+```
+
+Artifacts:
+- Group: `com.circles.reactnative`
+- Artifact: `sg-react-native-kit`
+- Version: `1.0.0` (change in `android/rnlib/build.gradle`)
+
+If you need to publish the bundled RN native dependencies too (optional):
+
+```sh
+cd android
+./gradlew \
+  :react-native-gesture-handler:publishReleasePublicationToLocalRepoRepository \
+  :react-native-screens:publishReleasePublicationToLocalRepoRepository \
+  :react-native-safe-area-context:publishReleasePublicationToLocalRepoRepository \
+  -PrnDepsVersion=1.0.0
+```
+
+## Common troubleshooting
+
+- **CocoaPods UTF-8 error**:
+  ```sh
+  LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle exec pod install
+  ```
+- **Gradle lock issues**: Try again or stop any stuck Gradle daemons.
+- **Android build flavors not found**: use `--mode stagingDebug` or `--mode productionDebug`.
+- **Metro not connected**: ensure `npm start` is running on port 8081.
+
+## Scripts
+
+```sh
+npm start
+npm run android
 npm run ios
-
-# OR using Yarn
-yarn ios
+npm test
+npm run lint
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## Notes for new React Native devs
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+- Debug builds load JS from Metro and support Fast Refresh.
+- Release builds bundle JS and disable the developer menu.
+- The dev menu appears on device/emulator (shake on device, Cmd+M / Ctrl+M on simulator/emulator).
 
-## Step 3: Modify your app
+---
 
-Now that you have successfully run the app, let's make changes!
+If you’re new to RN, start with `src/app/App.tsx` and `src/features/home/HomeScreen.tsx`.
 
-Open `src/app/App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+## CI (GitHub Actions)
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+Create `.github/workflows/ci.yml` with:
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+```yaml
+name: CI
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
 
-## Congratulations! :tada:
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install JS deps
+        run: npm ci
+      - name: Build Android Debug
+        run: cd android && ./gradlew assembleStagingDebug
 
-You've successfully run and modified your React Native App. :partying_face:
+  ios:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install JS deps
+        run: npm ci
+      - name: Install CocoaPods
+        run: cd ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 bundle install && bundle exec pod install
+      - name: Build iOS
+        run: xcodebuild -workspace ios/SGReactNativeKit.xcworkspace -scheme SGReactNativeKit -configuration Debug -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15'
+```
 
-### Now what?
+## Release checklist
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+Android:
+- Bump versionName/versionCode in `android/app/build.gradle`
+- Use a release keystore and update signing config
+- Build AAB: `cd android && ./gradlew bundleProductionRelease`
+- Test on a real device before store upload
 
-# Troubleshooting
+iOS:
+- Bump `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in Xcode
+- Use a distribution signing profile
+- Archive in Xcode and upload to App Store Connect
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+JS:
+- Update changelog / release notes
+- Tag release in git
 
-# Learn More
+## Screenshots
 
-To learn more about React Native, take a look at the following resources:
+Add screenshots to `docs/screenshots/` and list them here:
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+```text
+- docs/screenshots/home.png
+- docs/screenshots/screen-a.png
+- docs/screenshots/screen-b.png
+```
+
+## Contributing
+
+- Create a feature branch: `git checkout -b feature/your-change`
+- Keep changes scoped and include tests where possible
+- Run `npm test` and `npm run lint` before opening a PR
+- Open a PR against `master` with a short summary and screenshots if UI changed
+
+## Troubleshooting FAQ
+
+- **Android build fails with SDK errors**: Open Android Studio once to accept licenses.
+- **Pods install fails**: Ensure Ruby + bundler match `Gemfile` and run `bundle exec pod install`.
+- **Metro not found**: Run `npm start` in a separate terminal.
+- **App launches to blank screen**: Clear Metro cache: `npx react-native start --reset-cache`.
+- **Cannot see Dev Menu**: Only available on debug builds.
+
+## JitPack (production AAR)
+
+This repo is ready for JitPack. Tag a release like `v1.0.0` and JitPack will build the AAR from `android/rnlib`.
+
+Add JitPack to your consuming app:
+
+```gradle
+repositories {
+  maven { url 'https://jitpack.io' }
+}
+```
+
+Then depend on the tag:
+
+```gradle
+dependencies {
+  implementation 'com.github.iniyanmurugavel:React-Native-Library:v1.0.0'
+}
+```
+
+Notes:
+- JitPack uses the Git tag as the version.
+- The AAR is built by `./gradlew :rnlib:assembleRelease` (see `jitpack.yml`).
+- Make sure the tag is pushed to GitHub.
+
