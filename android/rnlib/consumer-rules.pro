@@ -1,0 +1,5 @@
+-keep class com.facebook.react.** { *; }
+-keep class com.facebook.hermes.** { *; }
+-keep class com.facebook.jni.** { *; }
+-keep class com.swmansion.** { *; }
+-keep class com.th3rdwave.** { *; }
